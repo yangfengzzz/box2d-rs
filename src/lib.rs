@@ -1,7 +1,7 @@
 #![crate_name = "box2d_rs"]
 #![crate_type = "lib"]
 
-// pub mod b2_settings;
+pub mod b2_settings;
 // pub mod b2_draw;
 // pub mod b2_timer;
 //

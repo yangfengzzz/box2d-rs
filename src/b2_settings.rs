@@ -1,56 +1,35 @@
-/// Global tuning constants based on meters-kilograms-seconds (MKS) units.
-use std::assert;
-
-#[cfg(feature="serde_support")]
+#[cfg(feature = "serde_support")]
 use serde::{de::DeserializeOwned, Serialize};
+use std::f32::consts::PI;
 
-use std::rc::{Rc,Weak};
-pub fn b2_not_used<T>(_x: T) {}
-pub fn b2_assert(a: bool) {
-    assert!(a);
-}
+// Tunable Constants
 
-//TODO_humman все дополнительные вещи вынести в отдельный файл
+/// You can use this to change the length scale used by your game.
+/// For example for inches you could use 39.4.
+pub const B2_LENGTH_UNITS_PER_METER: f32 = 1.0;
 
-pub(crate) fn get_two_mut<T>(data: & mut [T], a: usize, b: usize) -> (& mut T, & mut T) {
-	assert!(a != b);
-	let ptr: *mut [T] = data;
-	unsafe { (&mut (*ptr)[a], &mut (*ptr)[b]) }
-}
+/// The maximum number of vertices on a convex polygon. You cannot increase
+/// this too much because b2BlockAllocator has a maximum object size.
+pub const B2_MAX_POLYGON_VERTICES: usize = 8;
 
-pub fn upgrade<T: ?Sized>(v: &Weak<T>) -> Rc<T> {
-	return v.upgrade().unwrap();
-}
-
-pub fn upgrade_opt<T: ?Sized>(v: &Option<Weak<T>>) -> Rc<T> {
-	return v.as_ref().unwrap().upgrade().unwrap();
-}
-
-#[cfg(not(feature="serde_support"))]
+// User data
+/// You can define this to inject whatever data you want in b2Body, b2Fixture, b2Joint
+#[cfg(not(feature = "serde_support"))]
 pub trait UserDataType: Default + Clone + 'static {
     type Fixture: Default + Clone + std::fmt::Debug;
     type Body: Default + Clone + PartialEq + std::fmt::Debug;
     type Joint: Default + Clone + std::fmt::Debug;
 }
 
-#[cfg(feature="serde_support")]
+#[cfg(feature = "serde_support")]
 pub trait UserDataType: Default + Clone + Serialize + DeserializeOwned + 'static {
     type Fixture: Default + Clone + Serialize + DeserializeOwned + std::fmt::Debug;
     type Body: Default + Clone + Serialize + DeserializeOwned + PartialEq + std::fmt::Debug;
     type Joint: Default + Clone + Serialize + DeserializeOwned + std::fmt::Debug;
 }
 
-pub const B2_MAX_FLOAT: f32 = std::f32::MAX;
-pub const B2_EPSILON: f32 = std::f32::EPSILON;
-pub const B2_PI: f32 = std::f32::consts::PI;
-
-use std::f32::consts::PI;
-
-#[cfg(debug_assertions)]
-pub const B2_DEBUG:bool = true;
-
-#[cfg(not(debug_assertions))]
-pub const B2_DEBUG:bool = false;
+//--------------------------------------------------------------------------------------------------
+/// Global tuning constants based on meters-kilograms-seconds (MKS) units.
 
 // Collision
 
@@ -58,14 +37,10 @@ pub const B2_DEBUG:bool = false;
 /// not change this value.
 pub const B2_MAX_MANIFOLD_POINTS: usize = 2;
 
-/// The maximum number of vertices on a convex polygon. You cannot increase
-/// this too much because b2BlockAllocator has a maximum object size.
-pub const B2_MAX_POLYGON_VERTICES: usize = 8;
-
 /// This is used to fatten AABBs in the dynamic tree. This allows proxies
 /// to move by a small amount without triggering a tree adjustment.
 /// This is in meters.
-pub const B2_AABB_EXTENSION: f32 = 0.1;
+pub const B2_AABB_EXTENSION: f32 = 0.1 * B2_LENGTH_UNITS_PER_METER;
 
 /// This is used to fatten AABBs in the dynamic tree. This is used to predict
 /// the future position based on the current displacement.
@@ -74,7 +49,7 @@ pub const B2_AABB_MULTIPLIER: f32 = 4.0;
 
 /// A small length used as a collision and constraint tolerance. Usually it is
 /// chosen to be numerically significant, but visually insignificant.
-pub const B2_LINEAR_SLOP: f32 = 0.005;
+pub const B2_LINEAR_SLOP: f32 = 0.005 * B2_LENGTH_UNITS_PER_METER;
 
 /// A small angle used as a collision and constraint tolerance. Usually it is
 /// chosen to be numerically significant, but visually insignificant.
@@ -93,13 +68,9 @@ pub const B2_MAX_SUB_STEPS: usize = 8;
 /// Maximum number of contacts to be handled to solve a TOI impact.
 pub const B2_MAX_TOICONTACTS: usize = 32;
 
-/// A velocity threshold for elastic collisions. Any collision with a relative linear
-/// velocity below this threshold will be treated as inelastic.
-pub const B2_VELOCITY_THRESHOLD: f32 = 1.0;
-
 /// The maximum linear position correction used when solving constraints. This helps to
 /// prevent overshoot.
-pub const B2_MAX_LINEAR_CORRECTION: f32 = 0.2;
+pub const B2_MAX_LINEAR_CORRECTION: f32 = 0.2 * B2_LENGTH_UNITS_PER_METER;
 
 /// The maximum angular position correction used when solving constraints. This helps to
 /// prevent overshoot.
@@ -107,7 +78,7 @@ pub const B2_MAX_ANGULAR_CORRECTION: f32 = 8.0 / 180.0 * PI;
 
 /// The maximum linear velocity of a body. This limit is very large and is used
 /// to prevent numerical problems. You shouldn't need to adjust this.
-pub const B2_MAX_TRANSLATION: f32 = 2.0;
+pub const B2_MAX_TRANSLATION: f32 = 2.0 * B2_LENGTH_UNITS_PER_METER;
 pub const B2_MAX_TRANSLATION_SQUARED: f32 = B2_MAX_TRANSLATION * B2_MAX_TRANSLATION;
 
 /// The maximum angular velocity of a body. This limit is very large and is used
@@ -127,7 +98,7 @@ pub const B2_TOI_BAUMGARTE: f32 = 0.75;
 pub const B2_TIME_TO_SLEEP: f32 = 0.5;
 
 /// A body cannot sleep if its linear velocity is above this tolerance.
-pub const B2_LINEAR_SLEEP_TOLERANCE: f32 = 0.01;
+pub const B2_LINEAR_SLEEP_TOLERANCE: f32 = 0.01 * B2_LENGTH_UNITS_PER_METER;
 
 /// A body cannot sleep if its angular velocity is above this tolerance.
 pub const B2_ANGULAR_SLEEP_TOLERANCE: f32 = 2.0 / 180.0 * PI;
