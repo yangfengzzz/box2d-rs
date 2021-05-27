@@ -1,24 +1,10 @@
-use crate::b2_settings::{b2_assert, B2_PI};
-use crate::private::common::b2_math as private;
-use std::f32::EPSILON;
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-
-#[cfg(feature="serde_support")]
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign, Index, IndexMut};
+use std::f32::consts::PI;
+#[cfg(feature = "serde_support")]
 use serde::{Serialize, Deserialize};
 
-pub fn b2_is_valid(x: f32) -> bool {
-    return x.is_finite();
-}
-
-pub fn b2_sqrt(x: f32) -> f32 {
-    return f32::sqrt(x);
-}
-pub fn b2_atan2(y: f32, x: f32) -> f32 {
-    return f32::atan2(y, x);
-}
-
 /// A 2D column vector.
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
+#[derive(Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct B2vec2 {
     pub x: f32,
@@ -26,13 +12,14 @@ pub struct B2vec2 {
 }
 
 impl B2vec2 {
+    /// Default constructor does nothing (for performance).
+    pub fn new_default() -> B2vec2 {
+        return B2vec2::new(0.0, 0.0);
+    }
+
     /// Construct using coordinates.
     pub fn new(x_in: f32, y_in: f32) -> B2vec2 {
         return B2vec2 { x: x_in, y: y_in };
-    }
-
-    pub fn zero() -> B2vec2{
-        return B2vec2::new(0.0, 0.0);
     }
 
     /// Set this vector to all zeros.
@@ -47,29 +34,9 @@ impl B2vec2 {
         self.y = y_;
     }
 
-    pub fn get(self, i: i32) -> f32 {
-        assert!(i >= 0 && i < 2);
-
-        if i == 0 {
-            self.x
-        } else {
-            self.y
-        }
-    }
-
-    pub fn set_by_index(&mut self, i: i32, value: f32) {
-        assert!(i >= 0 && i < 2);
-
-        if i == 0 {
-            self.x = value;
-        } else {
-            self.y = value;
-        }
-    }
-
     /// Get the length of this vector (the norm).
     pub fn length(self) -> f32 {
-        return b2_sqrt(self.x * self.x + self.y * self.y);
+        return f32::sqrt(self.x * self.x + self.y * self.y);
     }
 
     /// Get the length squared. For performance, use this instead of
@@ -81,7 +48,7 @@ impl B2vec2 {
     /// Convert this vector into a unit vector. Returns the length.
     pub fn normalize(&mut self) -> f32 {
         let length = self.length();
-        if length < EPSILON {
+        if length < f32::EPSILON {
             return 0.0;
         }
         let inv_length: f32 = 1.0 / length;
@@ -93,7 +60,7 @@ impl B2vec2 {
 
     /// Does this vector contain finite coordinates?
     pub fn is_valid(self) -> bool {
-        return b2_is_valid(self.x) && b2_is_valid(self.y);
+        return self.x.is_finite() && self.y.is_finite();
     }
 
     /// Get the skew vector such that dot(skew_vec, other) == cross(vec, other)
@@ -109,6 +76,28 @@ impl Neg for B2vec2 {
         return B2vec2 {
             x: -self.x,
             y: -self.y,
+        };
+    }
+}
+
+impl Index<i32> for B2vec2 {
+    type Output = f32;
+
+    fn index(&self, index: i32) -> &Self::Output {
+        return match index {
+            0 => &self.x,
+            1 => &self.y,
+            _ => { panic!("out bound!") }
+        };
+    }
+}
+
+impl IndexMut<i32> for B2vec2 {
+    fn index_mut(&mut self, index: i32) -> &mut Self::Output {
+        return match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            _ => { panic!("out bound!") }
         };
     }
 }
@@ -137,6 +126,7 @@ impl MulAssign<f32> for B2vec2 {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// A 2D column vector with 3 elements.
 #[derive(Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -147,6 +137,15 @@ pub struct B2Vec3 {
 }
 
 impl B2Vec3 {
+    /// Default constructor does nothing (for performance).
+    pub fn new_default() -> B2Vec3 {
+        return B2Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        };
+    }
+
     /// Construct using coordinates.
     pub fn new(x_in: f32, y_in: f32, z_in: f32) -> B2Vec3 {
         return B2Vec3 {
@@ -161,10 +160,6 @@ impl B2Vec3 {
         self.x = 0.0;
         self.y = 0.0;
         self.z = 0.0;
-    }
-
-    pub fn zero() -> Self{
-        return Self::new(0.0, 0.0, 0.0);
     }
 
     /// Set this vector to some specified coordinates.
@@ -210,15 +205,24 @@ impl MulAssign<f32> for B2Vec3 {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// A 2-by-2 matrix. Stored in column-major order.
 #[derive(Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct B2Mat22 {
-   pub ex: B2vec2,
-   pub ey: B2vec2,
+    pub ex: B2vec2,
+    pub ey: B2vec2,
 }
 
 impl B2Mat22 {
+    /// The default constructor does nothing (for performance).
+    pub fn new_default() -> B2Mat22 {
+        return B2Mat22 {
+            ex: B2vec2::new_default(),
+            ey: B2vec2::new_default(),
+        };
+    }
+
     /// Construct this matrix using columns.
     pub fn new(c1: B2vec2, c2: B2vec2) -> B2Mat22 {
         return B2Mat22 { ex: c1, ey: c2 };
@@ -252,10 +256,6 @@ impl B2Mat22 {
         self.ey.x = 0.0;
         self.ex.y = 0.0;
         self.ey.y = 0.0;
-    }
-
-    pub fn zero()->Self{
-        return Self::new(B2vec2::zero(), B2vec2::zero());
     }
 
     pub fn get_inverse(&mut self) -> B2Mat22 {
@@ -293,6 +293,7 @@ impl B2Mat22 {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// A 3-by-3 matrix. Stored in column-major order.
 #[derive(Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -303,6 +304,15 @@ pub struct B2Mat33 {
 }
 
 impl B2Mat33 {
+    /// The default constructor does nothing (for performance).
+    pub fn new_default() -> B2Mat33 {
+        return B2Mat33 {
+            ex: B2Vec3::new_default(),
+            ey: B2Vec3::new_default(),
+            ez: B2Vec3::new_default(),
+        };
+    }
+
     /// Construct this matrix using columns.
     pub fn new(c1: B2Vec3, c2: B2Vec3, c3: B2Vec3) -> B2Mat33 {
         return B2Mat33 {
@@ -319,36 +329,84 @@ impl B2Mat33 {
         self.ez.set_zero();
     }
 
-    pub fn zero()->Self{
-        return Self::new(B2Vec3::zero(), B2Vec3::zero(),B2Vec3::zero());
-    }
-
     /// solve A * x = b, where b is a column vector. This is more efficient
     /// than computing the inverse in one-shot cases.
     pub fn solve33(self, b: B2Vec3) -> B2Vec3 {
-        return private::solve33(self, b);
+        let mut det: f32 = b2_dot_vec3(self.ex, b2_cross_vec3(self.ey, self.ez));
+        if det != 0.0 {
+            det = 1.0 / det;
+        }
+        let x = B2Vec3 {
+            x: det * b2_dot_vec3(b, b2_cross_vec3(self.ey, self.ez)),
+            y: det * b2_dot_vec3(self.ex, b2_cross_vec3(b, self.ez)),
+            z: det * b2_dot_vec3(self.ex, b2_cross_vec3(self.ey, b)),
+        };
+        return x;
     }
 
     /// solve A * x = b, where b is a column vector. This is more efficient
     /// than computing the inverse in one-shot cases. solve only the upper
     /// 2-by-2 matrix equation.
     pub fn solve22(self, b: B2vec2) -> B2vec2 {
-        return private::solve22(self, b);
+        let (a11, a12, a21, a22) = (self.ex.x, self.ey.x, self.ex.y, self.ey.y);
+        let mut det: f32 = a11 * a22 - a12 * a21;
+        if det != 0.0 {
+            det = 1.0 / det;
+        }
+        let x = B2vec2 {
+            x: det * (a22 * b.x - a12 * b.y),
+            y: det * (a11 * b.y - a21 * b.x),
+        };
+        return x;
     }
 
     /// Get the inverse of this matrix as a 2-by-2.
     /// Returns the zero matrix if singular.
     pub fn get_inverse22(self, m: &mut B2Mat33) {
-        return private::get_inverse22(self, m);
+        let (a, b, c, d) = (self.ex.x, self.ey.x, self.ex.y, self.ey.y);
+        let mut det: f32 = a * d - b * c;
+        if det != 0.0 {
+            det = 1.0 / det;
+        }
+
+        m.ex.x = det * d;
+        m.ey.x = -det * b;
+        m.ex.z = 0.0;
+        m.ex.y = -det * c;
+        m.ey.y = det * a;
+        m.ey.z = 0.0;
+        m.ez.x = 0.0;
+        m.ez.y = 0.0;
+        m.ez.z = 0.0;
     }
 
     /// Get the symmetric inverse of this matrix as a 3-by-3.
     /// Returns the zero matrix if singular.
     pub fn get_sym_inverse33(self, m: &mut B2Mat33) {
-        return private::get_sym_inverse33(self, m);
+        let mut det = b2_dot_vec3(self.ex, b2_cross_vec3(self.ey, self.ez));
+        if det != 0.0 {
+            det = 1.0 / det;
+        }
+
+        let (a11, a12, a13) = (self.ex.x, self.ey.x, self.ez.x);
+        let (a22, a23) = (self.ey.y, self.ez.y);
+        let a33 = self.ez.z;
+
+        m.ex.x = det * (a22 * a33 - a23 * a23);
+        m.ex.y = det * (a13 * a23 - a12 * a33);
+        m.ex.z = det * (a12 * a23 - a13 * a22);
+
+        m.ey.x = m.ex.y;
+        m.ey.y = det * (a11 * a33 - a13 * a13);
+        m.ey.z = det * (a13 * a12 - a11 * a23);
+
+        m.ez.x = m.ex.z;
+        m.ez.y = m.ey.z;
+        m.ez.z = det * (a11 * a22 - a12 * a12);
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// Rotation
 #[derive(Clone, Default, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -359,6 +417,13 @@ pub struct B2Rot {
 }
 
 impl B2Rot {
+    pub fn new_default() -> B2Rot {
+        return B2Rot {
+            s: 0.0,
+            c: 0.0,
+        };
+    }
+
     /// initialize from an angle in radians
     pub fn new(angle: f32) -> B2Rot {
         // TODO_ERIN optimize
@@ -397,6 +462,7 @@ impl B2Rot {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// A transform contains translation and rotation. It is used to represent
 /// the position and orientation of rigid frames.
 #[derive(Default, Clone, Copy, Debug)]
@@ -407,6 +473,14 @@ pub struct B2Transform {
 }
 
 impl B2Transform {
+    /// The default constructor does nothing.
+    pub fn new_default() -> B2Transform {
+        return B2Transform {
+            p: B2vec2::new_default(),
+            q: B2Rot::new_default(),
+        };
+    }
+
     /// initialize using a position vector and a rotation.
     pub fn new(position: B2vec2, rotation: B2Rot) -> B2Transform {
         return B2Transform {
@@ -428,6 +502,7 @@ impl B2Transform {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// This describes the motion of a body/shape for TOI computation.
 /// Shapes are defined with respect to the body origin, which may
 /// no coincide with the center of mass. However, to support dynamics
@@ -435,11 +510,14 @@ impl B2Transform {
 #[derive(Default, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct B2Sweep {
-    pub local_center: B2vec2, //< local center of mass position
+    //< local center of mass position
+    pub local_center: B2vec2,
+    //< center world positions
     pub c0: B2vec2,
-    pub c: B2vec2, //< center world positions
+    pub c: B2vec2,
+    //< world angles
     pub a0: f32,
-    pub a: f32, //< world angles
+    pub a: f32,
 
     // Fraction of the current time step in the range [0,1]
     // c0 and a0 are the positions at alpha0.
@@ -451,21 +529,34 @@ impl B2Sweep {
     /// * `transform` - the output transform
     /// * `beta` - is a factor in [0,1], where 0 indicates alpha0.
     pub fn get_transform(self, transform: &mut B2Transform, beta: f32) {
-        b2_sweep_get_transform(self, transform, beta);
+        transform.p = self.c0 + beta * (self.c - self.c0);
+        let angle: f32 = self.a0 + beta * (self.a - self.a0);
+        transform.q.set(angle);
+
+        // Shift to origin
+        transform.p -= b2_mul_rot_by_vec2(transform.q, self.local_center);
     }
 
     /// advance the sweep forward, yielding a new initial state.
     /// * `alpha` - the new initial time.
     pub fn advance(&mut self, alpha: f32) {
-        b2_sweep_advance(self, alpha);
+        debug_assert!(self.alpha0 < 1.0);
+        let beta: f32 = (alpha - self.alpha0) / (1.0 - self.alpha0);
+        self.c0 += beta * (self.c - self.c0);
+        self.a0 += beta * (self.a - self.a0);
+        self.alpha0 = alpha;
     }
 
     /// normalize the angles.
     pub fn normalize(&mut self) {
-        b2_sweep_normalize(self);
+        let two_pi: f32 = 2.0 * PI;
+        let d: f32 = two_pi * f32::floor(self.a0 / two_pi);
+        self.a0 -= d;
+        self.a -= d;
     }
 }
 
+//--------------------------------------------------------------------------------------------------
 /// Perform the dot product on two vectors.
 pub fn b2_dot(a: B2vec2, b: B2vec2) -> f32 {
     return a.x * b.x + a.y * b.y;
@@ -507,6 +598,7 @@ impl Add for B2vec2 {
         return B2vec2::new(self.x + b.x, self.y + b.y);
     }
 }
+
 impl Sub for B2vec2 {
     type Output = B2vec2;
     /// Subtract two vectors component-wise.
@@ -522,13 +614,13 @@ impl Mul<B2vec2> for f32 {
     }
 }
 
-pub fn is_equal(a: B2vec2, b: B2vec2) -> bool {
-    return a.x == b.x && a.y == b.y;
+impl PartialEq for B2vec2 {
+    fn eq(&self, other: &Self) -> bool {
+        return self.x == other.x && self.y == other.y;
+    }
 }
 
-pub fn not_equal(a: B2vec2, b: B2vec2) -> bool {
-    return a.x != b.x || a.y != b.y;
-}
+impl Eq for B2vec2 {}
 
 pub fn b2_distance_vec2(a: B2vec2, b: B2vec2) -> f32 {
     let c: B2vec2 = a - b;
@@ -578,6 +670,7 @@ pub fn b2_cross_vec3(a: B2Vec3, b: B2Vec3) -> B2Vec3 {
         a.x * b.y - a.y * b.x,
     );
 }
+
 impl Add for B2Mat22 {
     type Output = B2Mat22;
     fn add(self, b: B2Mat22) -> B2Mat22 {
@@ -669,8 +762,6 @@ pub fn b2_mul_transform(a: B2Transform, b: B2Transform) -> B2Transform {
     return c;
 }
 
-//TODO_humman крупные типы через ссылки
-
 // v2 = A.q' * (b.q * v1 + b.p - A.p)
 //    = A.q' * b.q * v1 + A.q' * (b.p - A.p)
 pub fn b2_mul_t_transform(a: B2Transform, b: B2Transform) -> B2Transform {
@@ -681,65 +772,24 @@ pub fn b2_mul_t_transform(a: B2Transform, b: B2Transform) -> B2Transform {
     return c;
 }
 
-// pub fn b2_abs<T>(a: T) -> T
-// where T: PartialOrd + Neg
-// {
-// 	return if a > T::new(0) { a }else{ -a};
-// }
-
-pub fn b2_abs_i32(v: i32) -> i32 {
-    return i32::abs(v);
-}
-
-pub fn b2_abs(v: f32) -> f32 {
-    return f32::abs(v);
-}
-
 pub fn b2_abs_vec2(a: B2vec2) -> B2vec2 {
-    return B2vec2::new(b2_abs(a.x), b2_abs(a.y));
+    return B2vec2::new(f32::abs(a.x), f32::abs(a.y));
 }
 
 pub fn b2_abs_mat22(a: B2Mat22) -> B2Mat22 {
     return B2Mat22::new(b2_abs_vec2(a.ex), b2_abs_vec2(a.ey));
 }
 
-pub fn b2_min<T>(a: T, b: T) -> T
-where
-    T: PartialOrd,
-{
-    return if a < b { a } else { b };
-}
-
 pub fn b2_min_vec2(a: B2vec2, b: B2vec2) -> B2vec2 {
-    return B2vec2::new(b2_min(a.x, b.x), b2_min(a.y, b.y));
-}
-
-pub fn b2_max<T>(a: T, b: T) -> T
-where
-    T: PartialOrd,
-{
-    return if a > b { a } else { b };
+    return B2vec2::new(f32::min(a.x, b.x), f32::min(a.y, b.y));
 }
 
 pub fn b2_max_vec2(a: B2vec2, b: B2vec2) -> B2vec2 {
-    return B2vec2::new(b2_max(a.x, b.x), b2_max(a.y, b.y));
-}
-
-pub fn b2_clamp<T>(a: T, low: T, high: T) -> T
-where
-    T: PartialOrd,
-{
-    return b2_max(low, b2_min(a, high));
+    return B2vec2::new(f32::max(a.x, b.x), f32::max(a.y, b.y));
 }
 
 pub fn b2_clamp_vec2(a: B2vec2, low: B2vec2, high: B2vec2) -> B2vec2 {
     return b2_max_vec2(low, b2_max_vec2(a, high));
-}
-
-pub fn b2_swap<T: Clone>(a: &mut T, b: &mut T) {
-    let tmp = a.clone();
-    *a = b.clone();
-    *b = tmp;
 }
 
 /// "Next Largest Power of 2
@@ -760,29 +810,4 @@ pub fn b2_next_power_of_two(v: u32) -> u32 {
 pub fn b2_is_power_of_two(x: u32) -> bool {
     let result: bool = x > 0 && (x & (x - 1)) == 0;
     return result;
-}
-
-pub fn b2_sweep_get_transform(this: B2Sweep, xf: &mut B2Transform, beta: f32) {
-    xf.p = this.c0 + beta * (this.c - this.c0);
-    let angle: f32 = this.a0 + beta * (this.a - this.a0);
-    xf.q.set(angle);
-
-    // Shift to origin
-    xf.p -= b2_mul_rot_by_vec2(xf.q, this.local_center);
-}
-
-pub fn b2_sweep_advance(this: &mut B2Sweep, alpha: f32) {
-    b2_assert(this.alpha0 < 1.0);
-    let beta: f32 = (alpha - this.alpha0) / (1.0 - this.alpha0);
-    this.c0 += beta * (this.c - this.c0);
-    this.a0 += beta * (this.a - this.a0);
-    this.alpha0 = alpha;
-}
-
-/// normalize an angle in radians to be between -pi and pi
-pub fn b2_sweep_normalize(this: &mut B2Sweep) {
-    let two_pi: f32 = 2.0 * B2_PI;
-    let d: f32 = two_pi * f32::floor(this.a0 / two_pi);
-    this.a0 -= d;
-    this.a -= d;
 }

@@ -19,7 +19,7 @@ pub mod b2_settings;
 //
 // pub mod joints;
 //
-// pub mod b2_math;
+pub mod b2_math;
 // pub mod b2_collision;
 // pub mod b2_distance;
 // pub mod b2_time_of_impact;
